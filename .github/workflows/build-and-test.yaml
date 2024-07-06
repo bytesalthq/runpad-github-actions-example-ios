@@ -1,0 +1,44 @@
+name: Build & Test on Runpad
+
+on:
+  push:
+    branches: ['main']
+
+jobs:
+  build:
+    name: Build & Test on Runpad
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build with Xcode
+        run: |
+          DERIVED_DATA_PATH=/tmp/runpad-github-actions-example-ios-$(uuidgen)
+
+          xcodebuild clean build                           \
+            -scheme runpad-github-actions-example-ios                  \
+            -project runpad-github-actions-example-ios.xcodeproj       \
+            -configuration Release                         \
+            -destination 'generic/platform=iOS Simulator'  \
+            -derivedDataPath "$DERIVED_DATA_PATH"          \
+            clean build
+
+          echo "APP_DIR_PATH=${DERIVED_DATA_PATH}/Build/Products/Release-iphonesimulator/runpad-github-actions-example-ios.app" >>$GITHUB_ENV
+      - name: Runpad - Install Runpad CLI
+        run: |
+          curl -fsSL https://downloads.bytesalt.com/runpad-cli-install.sh | bash
+
+      - name: Runpad - Run tests
+        # Store your Runpad client ID and secret as secrets in your Github repository
+        # Guide: https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository
+        env:
+          RUNPAD_CLIENT_ID: ${{ secrets.RUNPAD_CLIENT_ID }}
+          RUNPAD_CLIENT_SECRET: ${{ secrets.RUNPAD_CLIENT_SECRET }}
+        # Replace the project-id value with your Runpad project ID
+        run: |
+          runpad run                                            \
+          --project-id=11ef182a-b845-f420-9741-6973dfd76499     \
+          --platform=ios                                        \
+          --device='iPhone 15 Pro'                              \
+          --build-path=${{ env.APP_DIR_PATH }}
